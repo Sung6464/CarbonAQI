@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { auth } from './firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import { useTheme } from './ThemeContext.jsx';
 
 const COLORS = {
   bg: "#0F1A0F",
@@ -13,6 +14,7 @@ const COLORS = {
 };
 
 export default function AuthScreen({ onAuthSuccess }) {
+  const { colors } = useTheme();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -50,26 +52,26 @@ export default function AuthScreen({ onAuthSuccess }) {
     }}>
       <div style={{
         width: "100%", maxWidth: 375, padding: "40px 24px",
-        background: COLORS.bg, borderRadius: 32,
-        border: `1px solid ${COLORS.border}`,
+        background: colors.bg, borderRadius: 32,
+        border: `1px solid ${colors.border}`,
         boxShadow: `0 20px 60px rgba(0,0,0,0.5)`,
         display: "flex", flexDirection: "column"
       }}>
         <div style={{ textAlign: "center", marginBottom: 40 }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>🌿</div>
-          <h1 style={{ fontSize: 28, color: COLORS.white, margin: 0, fontWeight: 800, letterSpacing: -1 }}>CarbonIQ</h1>
-          <p style={{ color: COLORS.muted, fontSize: 13, marginTop: 8 }}>Track your footprint. Build your streak.</p>
+          <h1 style={{ fontSize: 28, color: colors.white, margin: 0, fontWeight: 800, letterSpacing: -1 }}>CarbonIQ</h1>
+          <p style={{ color: colors.muted, fontSize: 13, marginTop: 8 }}>Track your footprint. Build your streak.</p>
         </div>
 
         <form onSubmit={handleAuth} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {error && (
-            <div style={{ padding: "12px", background: "#3A1A1A", border: `1px solid ${COLORS.red}`, borderRadius: 12, color: "#FF9999", fontSize: 12, textAlign: "center" }}>
+            <div style={{ padding: "12px", background: "#3A1A1A", border: `1px solid ${colors.red}`, borderRadius: 12, color: "#FF9999", fontSize: 12, textAlign: "center" }}>
               {error}
             </div>
           )}
           
           <div>
-            <label style={{ fontSize: 11, color: COLORS.muted, letterSpacing: 1, textTransform: "uppercase", marginBottom: 6, display: "block" }}>Email</label>
+            <label style={{ fontSize: 11, color: colors.muted, letterSpacing: 1, textTransform: "uppercase", marginBottom: 6, display: "block" }}>Email</label>
             <input 
               type="email" 
               value={email}
@@ -85,7 +87,7 @@ export default function AuthScreen({ onAuthSuccess }) {
           </div>
 
           <div>
-            <label style={{ fontSize: 11, color: COLORS.muted, letterSpacing: 1, textTransform: "uppercase", marginBottom: 6, display: "block" }}>Password</label>
+            <label style={{ fontSize: 11, color: colors.muted, letterSpacing: 1, textTransform: "uppercase", marginBottom: 6, display: "block" }}>Password</label>
             <input 
               type="password" 
               value={password}
@@ -94,7 +96,7 @@ export default function AuthScreen({ onAuthSuccess }) {
               minLength={6}
               style={{
                 width: "100%", padding: "14px 16px", borderRadius: 12, boxSizing: "border-box",
-                background: COLORS.card, border: `1px solid ${COLORS.border}`, color: COLORS.white,
+                background: colors.card, border: `1px solid ${colors.border}`, color: colors.white,
                 fontFamily: "inherit", fontSize: 14
               }}
               placeholder="••••••••"
@@ -106,7 +108,7 @@ export default function AuthScreen({ onAuthSuccess }) {
             disabled={loading}
             style={{
               width: "100%", padding: "16px", borderRadius: 14, marginTop: 12,
-              background: COLORS.accent, border: "none", color: COLORS.bg,
+              background: colors.accent, border: "none", color: colors.bg,
               fontSize: 15, fontWeight: 800, cursor: "pointer", letterSpacing: 0.3,
               opacity: loading ? 0.7 : 1
             }}
@@ -120,7 +122,7 @@ export default function AuthScreen({ onAuthSuccess }) {
             type="button"
             onClick={() => setIsLogin(!isLogin)}
             style={{ 
-              background: "none", border: "none", color: COLORS.muted, 
+              background: "none", border: "none", color: colors.muted, 
               fontSize: 13, cursor: "pointer", textDecoration: "underline",
               padding: "8px"
             }}

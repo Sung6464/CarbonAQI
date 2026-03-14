@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTheme } from "./ThemeContext.jsx";
 
 const SCREENS = ["dashboard", "log", "suggestions", "progress"];
 
@@ -35,54 +36,75 @@ const COLORS = {
 // ── Reusable Components ──────────────────────────────────────────────────────
 
 function TopBar({ title, subtitle }) {
+  const { colors, theme, toggleTheme } = useTheme();
+
   return (
-    <div style={{ padding: "20px 24px 12px", borderBottom: `1px solid ${COLORS.border}` }}>
+    <div style={{ padding: "20px 24px 12px", borderBottom: `1px solid ${colors.border}` }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
-          <div style={{ fontSize: 11, color: COLORS.muted, letterSpacing: 3, textTransform: "uppercase", marginBottom: 4 }}>
+          <div style={{ fontSize: 11, color: colors.muted, letterSpacing: 3, textTransform: "uppercase", marginBottom: 4 }}>
             CarbonIQ
           </div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: COLORS.white, letterSpacing: -0.5 }}>
+          <div style={{ fontSize: 22, fontWeight: 700, color: colors.white, letterSpacing: -0.5 }}>
             {title}
           </div>
-          {subtitle && <div style={{ fontSize: 12, color: COLORS.muted, marginTop: 2 }}>{subtitle}</div>}
+          {subtitle && <div style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{subtitle}</div>}
         </div>
-        <div style={{
-          width: 36, height: 36, borderRadius: "50%",
-          background: COLORS.card, border: `1px solid ${COLORS.border}`,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 16, cursor: "pointer"
-        }}>🌿</div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <div style={{
+            width: 36, height: 36, borderRadius: "50%",
+            background: colors.card, border: `1px solid ${colors.border}`,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 16, cursor: "pointer"
+          }}>🌿</div>
+          <button
+            onClick={toggleTheme}
+            style={{
+              width: 36, height: 36, borderRadius: "50%",
+              background: colors.card, border: `1px solid ${colors.border}`,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 16, cursor: "pointer",
+              color: colors.muted
+            }}
+            title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+          >
+            {theme === 'dark' ? '☀️' : '🌙'}
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
-function StatCard({ value, label, color = COLORS.accent, sub }) {
+function StatCard({ value, label, color = colors.accent, sub }) {
+  const { colors } = useTheme();
+
   return (
     <div style={{
-      background: COLORS.card, border: `1px solid ${COLORS.border}`,
+      background: colors.card, border: `1px solid ${colors.border}`,
       borderRadius: 12, padding: "16px 18px", flex: 1
     }}>
       <div style={{ fontSize: 28, fontWeight: 800, color, letterSpacing: -1 }}>{value}</div>
-      <div style={{ fontSize: 11, color: COLORS.muted, marginTop: 2, lineHeight: 1.4 }}>{label}</div>
+      <div style={{ fontSize: 11, color: colors.muted, marginTop: 2, lineHeight: 1.4 }}>{label}</div>
       {sub && <div style={{ fontSize: 10, color, marginTop: 4, fontWeight: 600 }}>{sub}</div>}
     </div>
   );
 }
 
 function CategoryBar({ label, value, max, color, icon }) {
+  const { colors } = useTheme();
+
   const pct = Math.min((value / max) * 100, 100);
   return (
     <div style={{ marginBottom: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 14 }}>{icon}</span>
-          <span style={{ fontSize: 13, color: COLORS.white, fontWeight: 500 }}>{label}</span>
+          <span style={{ fontSize: 13, color: colors.white, fontWeight: 500 }}>{label}</span>
         </div>
         <span style={{ fontSize: 12, color, fontWeight: 700 }}>{value} kg</span>
       </div>
-      <div style={{ height: 6, background: COLORS.border, borderRadius: 999, overflow: "hidden" }}>
+      <div style={{ height: 6, background: colors.border, borderRadius: 999, overflow: "hidden" }}>
         <div style={{ height: "100%", width: `${pct}%`, background: color, borderRadius: 999, transition: "width 0.8s ease" }} />
       </div>
     </div>
@@ -90,11 +112,13 @@ function CategoryBar({ label, value, max, color, icon }) {
 }
 
 function NudgeCard({ icon, title, saving, desc, tag }) {
+  const { colors } = useTheme();
   const [done, setDone] = useState(false);
+
   return (
     <div style={{
-      background: done ? "#1A2E1A" : COLORS.card,
-      border: `1px solid ${done ? COLORS.accent : COLORS.border}`,
+      background: done ? "#1A2E1A" : colors.card,
+      border: `1px solid ${done ? colors.accent : colors.border}`,
       borderRadius: 14, padding: "16px 18px", marginBottom: 12,
       transition: "all 0.3s ease"
     }}>
@@ -102,20 +126,20 @@ function NudgeCard({ icon, title, saving, desc, tag }) {
         <div style={{ display: "flex", gap: 12, flex: 1 }}>
           <div style={{
             width: 40, height: 40, borderRadius: 10,
-            background: COLORS.border, display: "flex",
+            background: colors.border, display: "flex",
             alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0
           }}>{icon}</div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.white, marginBottom: 3 }}>{title}</div>
-            <div style={{ fontSize: 11, color: COLORS.muted, lineHeight: 1.5 }}>{desc}</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: colors.white, marginBottom: 3 }}>{title}</div>
+            <div style={{ fontSize: 11, color: colors.muted, lineHeight: 1.5 }}>{desc}</div>
             <div style={{ marginTop: 8, display: "flex", gap: 8, alignItems: "center" }}>
               <span style={{
-                fontSize: 10, fontWeight: 700, color: COLORS.accent,
+                fontSize: 10, fontWeight: 700, color: colors.accent,
                 background: "#1A3A1A", padding: "3px 8px", borderRadius: 999
               }}>Save {saving}</span>
               <span style={{
-                fontSize: 10, color: COLORS.muted,
-                background: COLORS.border, padding: "3px 8px", borderRadius: 999
+                fontSize: 10, color: colors.muted,
+                background: colors.border, padding: "3px 8px", borderRadius: 999
               }}>{tag}</span>
             </div>
           </div>
@@ -123,10 +147,10 @@ function NudgeCard({ icon, title, saving, desc, tag }) {
         <button
           onClick={() => setDone(!done)}
           style={{
-            width: 28, height: 28, borderRadius: "50%", border: `1.5px solid ${done ? COLORS.accent : COLORS.border}`,
-            background: done ? COLORS.accent : "transparent", cursor: "pointer",
+            width: 28, height: 28, borderRadius: "50%", border: `1.5px solid ${done ? colors.accent : colors.border}`,
+            background: done ? colors.accent : "transparent", cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 13, color: done ? COLORS.bg : COLORS.muted, flexShrink: 0,
+            fontSize: 13, color: done ? colors.bg : colors.muted, flexShrink: 0,
             marginLeft: 10, transition: "all 0.2s"
           }}
         >{done ? "✓" : ""}</button>
@@ -652,15 +676,15 @@ function Progress({ user }) {
             }}>
               <div style={{
                 width: 38, height: 38, borderRadius: 10,
-                background: unlocked ? "#1A3A1A" : COLORS.border,
-                border: `1px solid ${unlocked ? COLORS.accent : COLORS.border}`,
+                background: unlocked ? "#1A3A1A" : colors.border,
+                border: `1px solid ${unlocked ? colors.accent : colors.border}`,
                 display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18
               }}>{icon}</div>
               <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: unlocked ? COLORS.white : COLORS.muted }}>{title}</div>
-                <div style={{ fontSize: 10, color: COLORS.muted }}>{desc}</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: unlocked ? colors.white : colors.muted }}>{title}</div>
+                <div style={{ fontSize: 10, color: colors.muted }}>{desc}</div>
               </div>
-              {unlocked && <div style={{ marginLeft: "auto", fontSize: 14, color: COLORS.accent }}>✓</div>}
+              {unlocked && <div style={{ marginLeft: "auto", fontSize: 14, color: colors.accent }}>✓</div>}
             </div>
           ))}
         </div>
@@ -670,6 +694,7 @@ function Progress({ user }) {
 }
 
 export default function CarbonIQWireframe({ user }) {
+  const { colors } = useTheme();
   const [active, setActive] = useState("dashboard");
 
   const screenMap = {
@@ -689,8 +714,8 @@ export default function CarbonIQWireframe({ user }) {
       {/* Phone Frame */}
       <div style={{
         width: 375, height: 780,
-        background: COLORS.bg, borderRadius: 44,
-        border: `2px solid ${COLORS.border}`,
+        background: colors.bg, borderRadius: 44,
+        border: `2px solid ${colors.border}`,
         boxShadow: `0 0 0 8px #0D150D, 0 40px 80px rgba(0,0,0,0.7), 0 0 60px rgba(78,232,120,0.05)`,
         display: "flex", flexDirection: "column",
         overflow: "hidden", position: "relative"
@@ -699,15 +724,15 @@ export default function CarbonIQWireframe({ user }) {
         <div style={{
           height: 36, display: "flex", alignItems: "center",
           justifyContent: "space-between", padding: "0 24px",
-          fontSize: 11, color: COLORS.muted, flexShrink: 0
+          fontSize: 11, color: colors.muted, flexShrink: 0
         }}>
           <span>{user?.email?.split('@')[0]}</span>
           <div style={{
             width: 80, height: 20, background: "#0A110A",
-            border: `1px solid ${COLORS.border}`, borderRadius: 999,
+            border: `1px solid ${colors.border}`, borderRadius: 999,
             display: "flex", alignItems: "center", justifyContent: "center"
           }}>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: COLORS.border }} />
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: colors.border }} />
           </div>
           <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
             <span style={{ cursor: "pointer", padding: 2 }} onClick={async () => {
@@ -724,8 +749,8 @@ export default function CarbonIQWireframe({ user }) {
 
         {/* Bottom Nav */}
         <div style={{
-          height: 68, background: COLORS.card,
-          borderTop: `1px solid ${COLORS.border}`,
+          height: 68, background: colors.card,
+          borderTop: `1px solid ${colors.border}`,
           display: "flex", alignItems: "center",
           padding: "0 8px 8px", flexShrink: 0
         }}>
@@ -743,12 +768,12 @@ export default function CarbonIQWireframe({ user }) {
                   width: 36, height: 28, borderRadius: 8,
                   background: isActive ? "#1A3A1A" : "transparent",
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 16, color: isActive ? COLORS.accent : COLORS.muted,
+                  fontSize: 16, color: isActive ? colors.accent : colors.muted,
                   transition: "all 0.2s"
                 }}>{icon}</div>
                 <span style={{
                   fontSize: 10, fontWeight: isActive ? 700 : 400,
-                  color: isActive ? COLORS.accent : COLORS.muted,
+                  color: isActive ? colors.accent : colors.muted,
                   transition: "color 0.2s"
                 }}>{label}</span>
               </button>
