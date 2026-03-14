@@ -1,0 +1,153 @@
+{
+  "info": {
+    "name": "CarbonLoop API",
+    "description": "API collection for CarbonLoop Flask Backend",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Health Check",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:5000/health",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "health"
+          ]
+        }
+      }
+    },
+    {
+      "name": "2. Get Emission Factors",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:5000/api/factors",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "factors"
+          ]
+        }
+      }
+    },
+    {
+      "name": "3. Log Activity",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"user_id\": \"abc123\",\n  \"transport_mode\": \"car\",\n  \"distance_km\": 15,\n  \"meal_type\": \"chicken\",\n  \"energy_kwh\": 8\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/log",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "log"
+          ]
+        }
+      }
+    },
+    {
+      "name": "4. Get Dashboard",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:5000/api/dashboard/abc123",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "dashboard",
+            "abc123"
+          ]
+        }
+      }
+    },
+    {
+      "name": "5. Get Nudges",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:5000/api/nudges/abc123",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "nudges",
+            "abc123"
+          ]
+        }
+      }
+    },
+    {
+      "name": "6. Get History",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:5000/api/history/abc123",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "history",
+            "abc123"
+          ]
+        }
+      }
+    },
+    {
+      "name": "7. Get Streak",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:5000/api/streak/abc123",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "streak",
+            "abc123"
+          ]
+        }
+      }
+    }
+  ]
+}

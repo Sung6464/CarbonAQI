@@ -1,0 +1,29 @@
+{
+  "transport": {
+    "walk":   { "kg_per_km": 0.0,   "label": "Walking" },
+    "bike":   { "kg_per_km": 0.0,   "label": "Bicycle" },
+    "metro":  { "kg_per_km": 0.04,  "label": "Metro / Subway" },
+    "bus":    { "kg_per_km": 0.089, "label": "Bus" },
+    "car":    { "kg_per_km": 0.21,  "label": "Petrol Car" },
+    "ev":     { "kg_per_km": 0.07,  "label": "Electric Vehicle" },
+    "flight": { "kg_per_km": 0.255, "label": "Domestic Flight" }
+  },
+  "food": {
+    "vegan":   { "kg_co2": 0.3,  "label": "Vegan Meal" },
+    "veg":     { "kg_co2": 0.5,  "label": "Vegetarian Meal" },
+    "fish":    { "kg_co2": 1.2,  "label": "Fish / Seafood" },
+    "chicken": { "kg_co2": 1.5,  "label": "Chicken / Poultry" },
+    "beef":    { "kg_co2": 6.6,  "label": "Beef / Red Meat" }
+  },
+  "energy": {
+    "kg_per_kwh": 0.08,
+    "label": "Home Electricity (India grid avg)"
+  },
+  "comparisons": {
+    "km_per_kg_co2_petrol_car": 7.6,
+    "city_daily_avg_kg": 12.9,
+    "india_annual_avg_tonnes": 1.9,
+    "global_annual_avg_tonnes": 4.7,
+    "target_2050_tonnes": 2.0
+  }
+}
