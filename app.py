@@ -38,7 +38,10 @@ app = Flask(__name__)
 # Update CORS to allow your Vercel frontend
 CORS(app, origins=[
     "https://carbon-aqi.vercel.app",  # Your production frontend
+    "https://carboniq.onrender.com",  # Your Render frontend
     "http://localhost:5173",           # Local Vite dev
+    "http://localhost:5174",           # Local Vite dev (alternative port)
+    "http://localhost:5175",           # Local Vite dev (alternative port)
     "http://localhost:3000"            # Local React dev
 ])  # allow React frontend to call this API
 

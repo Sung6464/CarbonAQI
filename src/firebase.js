@@ -1,16 +1,20 @@
-import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+// src/firebase.js
+import { initializeApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
 
-// Automatically mapped from the carbonaqi project ID found in the admin SDK keys
 const firebaseConfig = {
-  apiKey: "AIzaSyA18kLX4OcfyOxl50gphAp-_RU7r_SUt_E",
-  authDomain: "carbonaqi.firebaseapp.com",
-  projectId: "carbonaqi",
-  storageBucket: "carbonaqi.firebasestorage.app",
-  messagingSenderId: "410536766569",
-  appId: "1:410536766569:web:af2dd45895d271a057c6f8",
-  measurementId: "G-B9E22SSFYH"
+  // Your existing Firebase config here
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+export { auth, db };

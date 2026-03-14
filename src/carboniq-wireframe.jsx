@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTheme } from "./ThemeContext.jsx";
+import { api } from './api';
 
 const SCREENS = ["dashboard", "log", "suggestions", "progress"];
 
@@ -185,20 +186,8 @@ function Dashboard({ user }) {
         return;
       }
       try {
-        console.log("Attempting to get Firebase ID token...");
-        const token = await user.getIdToken();
-        console.log("Token retrieved, fetching dashboard data for uid:", user.uid);
-        const res = await fetch(`http://localhost:5000/api/dashboard/${user.uid}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
-        
-        const json = await res.json();
+        console.log("Fetching dashboard data for uid:", user.uid);
+        const json = await api.getDashboard(user.uid);
         console.log("Dashboard data fetched successfully:", json);
         setData(json);
       } catch(err) {
@@ -327,22 +316,13 @@ function LogActivity({ user }) {
     if (!user) return;
     setLoading(true);
     try {
-      const token = await user.getIdToken();
-      const res = await fetch('http://localhost:5000/api/log', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          user_id: user.uid,
-          transport_mode: transport,
-          distance_km: distance,
-          meal_type: meal,
-          energy_kwh: energy
-        })
+      const data = await api.logActivity({
+        user_id: user.uid,
+        transport_mode: transport,
+        distance_km: distance,
+        meal_type: meal,
+        energy_kwh: energy
       });
-      const data = await res.json();
       if (data.success) {
         setLiveResult(data.total_co2);
         setLogged(true);
@@ -471,13 +451,7 @@ function Suggestions({ user }) {
     async function fetchNudges() {
       if (!user) return;
       try {
-        const token = await user.getIdToken();
-        const res = await fetch(`http://localhost:5000/api/nudges/${user.uid}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        const json = await res.json();
+        const json = await api.getNudges(user.uid);
         setData(json);
       } catch(err) {
         console.error("Failed to load nudges:", err);
@@ -572,13 +546,7 @@ function Progress({ user }) {
     async function fetchHistory() {
       if (!user) return;
       try {
-        const token = await user.getIdToken();
-        const res = await fetch(`http://localhost:5000/api/history/${user.uid}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        const json = await res.json();
+        const json = await api.getHistory(user.uid);
         setData(json);
       } catch(err) {
         console.error("Failed to load history:", err);
