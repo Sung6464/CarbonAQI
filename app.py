@@ -35,7 +35,12 @@ except Exception as e:
 CLIMATIQ_API_KEY = os.getenv("CLIMATIQ_API_KEY")
 
 app = Flask(__name__)
-CORS(app)  # allow React frontend to call this API
+# Update CORS to allow your Vercel frontend
+CORS(app, origins=[
+    "https://carbon-aqi.vercel.app",  # Your production frontend
+    "http://localhost:5173",           # Local Vite dev
+    "http://localhost:3000"            # Local React dev
+])  # allow React frontend to call this API
 
 # ── Load emission factors ────────────────────────────────────────────────────
 
