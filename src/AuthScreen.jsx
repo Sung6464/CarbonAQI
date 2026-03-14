@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { auth } from './firebase';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { useTheme } from './ThemeContext.jsx';
 
 const COLORS = {
@@ -41,6 +41,22 @@ export default function AuthScreen({ onAuthSuccess }) {
       else if (err.code === "auth/weak-password") setError("Password must be at least 6 characters.");
       else setError(err.message || "An error occurred. Please try again.");
     }
+    setLoading(false);
+  };
+
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    setError("");
+
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+      onAuthSuccess && onAuthSuccess();
+    } catch (err) {
+      console.error(err);
+      setError(err.message || "Failed to sign in with Google.");
+    }
+
     setLoading(false);
   };
 
@@ -114,6 +130,27 @@ export default function AuthScreen({ onAuthSuccess }) {
             }}
           >
             {loading ? "Authenticating..." : (isLogin ? "Sign In" : "Create Account")}
+          </button>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 14 }}>
+            <div style={{ flex: 1, height: 1, background: colors.border }} />
+            <div style={{ fontSize: 11, color: colors.muted }}>or</div>
+            <div style={{ flex: 1, height: 1, background: colors.border }} />
+          </div>
+
+          <button
+            type="button"
+            onClick={handleGoogleLogin}
+            disabled={loading}
+            style={{
+              width: "100%", padding: "14px", borderRadius: 14, marginTop: 14,
+              background: "#4285F4", border: "none", color: "#FFFFFF",
+              fontSize: 14, fontWeight: 700, cursor: "pointer", letterSpacing: 0.2,
+              opacity: loading ? 0.7 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 10
+            }}
+          >
+            <span style={{ fontSize: 18 }}>🟦</span>
+            Continue with Google
           </button>
         </form>
 

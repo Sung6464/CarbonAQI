@@ -76,7 +76,7 @@ function TopBar({ title, subtitle }) {
   );
 }
 
-function StatCard({ value, label, color = colors.accent, sub }) {
+function StatCard({ value, label, color, sub }) {
   const { colors } = useTheme();
 
   return (
@@ -564,6 +564,7 @@ function Suggestions({ user }) {
 }
 
 function Progress({ user }) {
+  const { colors } = useTheme();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
