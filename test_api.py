@@ -1,5 +1,5 @@
 """
-CarbonLoop — API Tests
+CarbonIQ — API Tests
 Run: python test_api.py  (make sure app.py is running first)
 """
 

@@ -1,4 +1,4 @@
-# CarbonLoop — Python Flask Backend
+# CarbonIQ — Python Flask Backend
 
 ## Setup & Run
 
@@ -97,7 +97,7 @@ const dashData = await dash.json();
 ## File Structure
 
 ```
-carbonloop-backend/
+carboniq-backend/
 ├── app.py               ← Main Flask app (all routes)
 ├── emission_factors.json← CO₂ data (no API dependency)
 ├── requirements.txt     ← flask + flask-cors
@@ -116,5 +116,5 @@ To persist data, swap the `DB` dict for **Firebase Firestore** or **SQLite**:
 ```python
 # SQLite swap (one extra import + 3 lines)
 import sqlite3
-conn = sqlite3.connect("carbonloop.db", check_same_thread=False)
+conn = sqlite3.connect("carboniq.db", check_same_thread=False)
 ```

@@ -1,5 +1,5 @@
 """
-CarbonLoop — Flask Backend
+CarbonIQ — Flask Backend
 Run: python app.py
 API base: http://localhost:5000
 """
@@ -587,16 +587,16 @@ def get_dashboard(user_id, ignored_user_id=None):
 # ── GET / ─────────────────────────────────────────────────────────────────────
 @app.route("/", methods=["GET"])
 def index():
-    return jsonify({"message": "CarbonLoop API is running. See /health for status."})
+    return jsonify({"message": "CarbonIQ API is running. See /health for status."})
 
 
 # ── GET /health ───────────────────────────────────────────────────────────────
 @app.route("/health", methods=["GET"])
 def health():
-    return jsonify({"status": "ok", "service": "CarbonLoop API", "version": "1.0.0"})
+    return jsonify({"status": "ok", "service": "CarbonIQ API", "version": "1.0.0"})
 
 
 # ── Run ───────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    print("\n🌿 CarbonLoop API running at http://localhost:5000\n")
+    print("\n🌿 CarbonIQ API running at http://localhost:5000\n")
     app.run(debug=True, port=5000)

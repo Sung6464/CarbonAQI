@@ -57,7 +57,7 @@ export default function AuthScreen({ onAuthSuccess }) {
       }}>
         <div style={{ textAlign: "center", marginBottom: 40 }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>🌿</div>
-          <h1 style={{ fontSize: 28, color: COLORS.white, margin: 0, fontWeight: 800, letterSpacing: -1 }}>CarbonLoop</h1>
+          <h1 style={{ fontSize: 28, color: COLORS.white, margin: 0, fontWeight: 800, letterSpacing: -1 }}>CarbonIQ</h1>
           <p style={{ color: COLORS.muted, fontSize: 13, marginTop: 8 }}>Track your footprint. Build your streak.</p>
         </div>
 

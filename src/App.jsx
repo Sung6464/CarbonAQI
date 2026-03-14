@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import './App.css'
-import CarbonLoopWireframe from './carbonloop-wireframe.jsx'
+import CarbonIQWireframe from './carboniq-wireframe.jsx'
 import AuthScreen from './AuthScreen.jsx'
 import { auth } from './firebase.js'
 import { onAuthStateChanged } from 'firebase/auth'
@@ -18,12 +18,12 @@ function App() {
   }, [])
 
   if (loading) {
-    return <div style={{ height: "100vh", background: "#0A110A", display: "flex", alignItems: "center", justifyContent: "center", color: "#6B8F6B" }}>Loading CarbonLoop...</div>
+    return <div style={{ height: "100vh", background: "#0A110A", display: "flex", alignItems: "center", justifyContent: "center", color: "#6B8F6B" }}>Loading CarbonIQ...</div>
   }
 
   return (
     <>
-      {user ? <CarbonLoopWireframe user={user} /> : <AuthScreen />}
+      {user ? <CarbonIQWireframe user={user} /> : <AuthScreen />}
     </>
   )
 }

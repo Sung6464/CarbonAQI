@@ -4,7 +4,7 @@
     "bike":   { "kg_per_km": 0.0,   "label": "Bicycle" },
     "metro":  { "kg_per_km": 0.04,  "label": "Metro / Subway" },
     "bus":    { "kg_per_km": 0.089, "label": "Bus" },
-    "car":    { "kg_per_km": 0.21,  "label": "Petrol Car" },
+    "car":    { "kg_per_km": 0.61,  "label": "Petrol Car" },
     "ev":     { "kg_per_km": 0.07,  "label": "Electric Vehicle" },
     "flight": { "kg_per_km": 0.255, "label": "Domestic Flight" }
   },

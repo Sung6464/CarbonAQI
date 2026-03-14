@@ -9,7 +9,7 @@ const NAV_ITEMS = [
   { id: "progress", icon: "◎", label: "Progress" },
 ];
 
-const COLORS = {
+/*const COLORS = {
   bg: "#0F1A0F",
   card: "#162016",
   border: "#2A3D2A",
@@ -19,6 +19,17 @@ const COLORS = {
   muted: "#6B8F6B",
   white: "#E8F5E8",
   red: "#E05555",
+};*/
+const COLORS = {
+  bg: "#050705",      // Deep obsidian
+  card: "#0D110D",    // Subtle elevation
+  border: "#1A1F1A",  // Hairline border
+  accent: "#BAFFD1",  // Minimalist Mint (soft & clean)
+  yellow: "#E6D5A7",  // Desaturated gold
+  blue: "#A7C7E6",    // Desaturated steel blue
+  muted: "#5C665C",   // Low-contrast label text
+  white: "#E8EEE8",   // Off-white for high readability
+  red: "#CF9292",     // Soft rose (less aggressive)
 };
 
 // ── Reusable Components ──────────────────────────────────────────────────────
@@ -29,7 +40,7 @@ function TopBar({ title, subtitle }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
           <div style={{ fontSize: 11, color: COLORS.muted, letterSpacing: 3, textTransform: "uppercase", marginBottom: 4 }}>
-            CarbonLoop
+            CarbonIQ
           </div>
           <div style={{ fontSize: 22, fontWeight: 700, color: COLORS.white, letterSpacing: -0.5 }}>
             {title}
@@ -520,7 +531,7 @@ function Suggestions({ user }) {
             📊 Why these 3?
           </div>
           <div style={{ fontSize: 11, color: COLORS.muted, lineHeight: 1.6 }}>
-            CarbonLoop picks your top 3 highest-impact swaps from today's log — ranked by CO₂ saved, not effort required.
+            CarbonIQ picks your top 3 highest-impact swaps from today's log — ranked by CO₂ saved, not effort required.
           </div>
         </div>
       </div>
@@ -658,7 +669,7 @@ function Progress({ user }) {
   );
 }
 
-export default function CarbonLoopWireframe({ user }) {
+export default function CarbonIQWireframe({ user }) {
   const [active, setActive] = useState("dashboard");
 
   const screenMap = {
@@ -672,7 +683,8 @@ export default function CarbonLoopWireframe({ user }) {
     <div style={{
       minHeight: "100vh", background: "#0A110A",
       display: "flex", alignItems: "center", justifyContent: "center",
-      fontFamily: "'Georgia', serif", padding: "24px"
+      /*fontFamily: "'Georgia', serif", padding: "24px"*/
+      fontFamily: "'-apple-system', 'BlinkMacSystemFont', 'Inter', 'Segoe UI', sans-serif",
     }}>
       {/* Phone Frame */}
       <div style={{
