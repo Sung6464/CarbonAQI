@@ -1,9 +1,9 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import CarbonLoopWireframe from './carbonloop-wireframe.jsx'
+import App from './App.jsx'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <CarbonLoopWireframe />
+    <App />
   </React.StrictMode>
 )

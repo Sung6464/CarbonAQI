@@ -127,7 +127,6 @@ function NudgeCard({ icon, title, saving, desc, tag }) {
 // ── Screens ──────────────────────────────────────────────────────────────────
 
 function Dashboard({ user }) {
-  console.log("[Dashboard] Rendering. User prop is:", user ? user.uid : "FALSY/NULL");
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -648,7 +647,6 @@ function Progress({ user }) {
 }
 
 export default function CarbonLoopWireframe({ user }) {
-  console.log("[CarbonLoopWireframe] Rendering. User prop is:", user ? user.uid : "FALSY/NULL");
   const [active, setActive] = useState("dashboard");
 
   const screenMap = {
