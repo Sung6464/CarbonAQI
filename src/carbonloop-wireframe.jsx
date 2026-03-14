@@ -130,6 +130,18 @@ function Dashboard({ user }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Current date for header (e.g. "Friday, Mar 14 · Delhi")
+  const getCurrentDateString = () => {
+    const now = new Date();
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const dayName = days[now.getDay()];
+    const monthName = months[now.getMonth()];
+    const dayNumber = now.getDate();
+
+    return `${dayName}, ${monthName} ${dayNumber} · Delhi`;
+  };
+
   useEffect(() => {
     async function fetchDashboard() {
       if (!user) {
@@ -192,7 +204,7 @@ function Dashboard({ user }) {
 
   return (
     <div style={{ flex: 1, overflowY: "auto", padding: "0 0 80px" }}>
-      <TopBar title="Good morning " subtitle="Saturday, Feb 28 · Delhi" />
+      <TopBar title="Good morning " subtitle={getCurrentDateString()} />
 
       {/* Hero Score */}
       <div style={{ padding: "20px 24px" }}>
@@ -733,21 +745,6 @@ export default function CarbonLoopWireframe({ user }) {
         </div>
       </div>
 
-      {/* Side labels */}
-      <div style={{
-        position: "absolute", right: "calc(50% - 230px)", top: "50%",
-        transform: "translateY(-50%)", display: "flex", flexDirection: "column", gap: 8
-      }}>
-        {SCREENS.map(s => (
-          <button key={s} onClick={() => setActive(s)} style={{
-            padding: "6px 12px", borderRadius: 8, border: `1px solid ${active === s ? COLORS.accent : COLORS.border}`,
-            background: active === s ? "#1A3A1A" : "transparent",
-            color: active === s ? COLORS.accent : COLORS.muted,
-            fontSize: 11, fontWeight: 600, cursor: "pointer", textTransform: "capitalize",
-            letterSpacing: 0.5
-          }}>{s}</button>
-        ))}
-      </div>
     </div>
   );
 }
