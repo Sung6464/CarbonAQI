@@ -28,10 +28,34 @@ except Exception:
 
 load_dotenv()
 CLIMATIQ_API_KEY = os.getenv("CLIMATIQ_API_KEY")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def load_firebase_credentials():
+    """Load Firebase Admin credentials from env vars or a local dev file."""
+    credentials_json = os.getenv("FIREBASE_CREDENTIALS_JSON")
+    if credentials_json:
+        return credentials.Certificate(json.loads(credentials_json))
+
+    credentials_path = (
+        os.getenv("FIREBASE_CREDENTIALS_PATH")
+        or os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+    )
+    if credentials_path:
+        return credentials.Certificate(credentials_path)
+
+    local_credentials_path = os.path.join(BASE_DIR, "firebase_key.json")
+    if os.path.exists(local_credentials_path):
+        return credentials.Certificate(local_credentials_path)
+
+    raise FileNotFoundError(
+        "Firebase credentials not found. Set FIREBASE_CREDENTIALS_JSON, "
+        "FIREBASE_CREDENTIALS_PATH, or GOOGLE_APPLICATION_CREDENTIALS."
+    )
 
 # Initialize Firebase Admin
 try:
-    cred = credentials.Certificate('firebase_key.json')
+    cred = load_firebase_credentials()
     firebase_admin.initialize_app(cred)
     db = firestore.client()
     print("✅ Successfully connected to Firebase Firestore!")
@@ -60,7 +84,6 @@ if os.environ.get("FLASK_ENV") == "production":
 
 # ── Load emission factors ────────────────────────────────────────────────────
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 with open(os.path.join(BASE_DIR, "emission_factors.json")) as f:
     FACTORS = json.load(f)
 
