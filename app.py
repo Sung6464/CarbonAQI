@@ -53,6 +53,11 @@ CORS(app, resources={
     }
 })  # allow React frontend to call this API
 
+# Production settings
+if os.environ.get("FLASK_ENV") == "production":
+    app.config["DEBUG"] = False
+    app.config["TESTING"] = False
+
 # ── Load emission factors ────────────────────────────────────────────────────
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -912,5 +917,6 @@ def get_company_info(company_id):
 
 # ── Run ───────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    print("\n🌿 CarbonIQ API running at http://localhost:5000\n")
-    app.run(debug=True, port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    print(f"\n🌿 CarbonIQ API running at http://localhost:{port}\n")
+    app.run(debug=False, host="0.0.0.0", port=port)
