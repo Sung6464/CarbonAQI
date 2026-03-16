@@ -640,7 +640,7 @@ function Suggestions({ user }) {
           borderRadius: 14, padding: "14px 16px"
         }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.blue, marginBottom: 4 }}>
-            📊 Why these 3?
+            📊 Why these ?
           </div>
           <div style={{ fontSize: 11, color: COLORS.muted, lineHeight: 1.6 }}>
             CarbonIQ picks your top 3 highest-impact swaps from today's log — ranked by CO₂ saved, not effort required.
