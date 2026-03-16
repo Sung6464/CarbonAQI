@@ -1,14 +1,16 @@
 import { useState, useEffect } from "react";
 import { useTheme } from "./ThemeContext.jsx";
 import { api } from './api';
+import CompanyDashboard from './CompanyDashboard.jsx';
 
-const SCREENS = ["dashboard", "log", "suggestions", "progress"];
+const SCREENS = ["dashboard", "log", "suggestions", "progress", "company"];
 
 const NAV_ITEMS = [
   { id: "dashboard", icon: "⬡", label: "Home" },
   { id: "log", icon: "✦", label: "Log" },
   { id: "suggestions", icon: "◈", label: "Nudges" },
   { id: "progress", icon: "◎", label: "Progress" },
+  { id: "company", icon: "🏢", label: "Company" },
 ];
 
 /*const COLORS = {
@@ -162,9 +164,41 @@ function NudgeCard({ icon, title, saving, desc, tag }) {
 
 // ── Screens ──────────────────────────────────────────────────────────────────
 
-function Dashboard({ user }) {
+function Dashboard({ user, refreshKey }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Cost settings (stored in localStorage) — values are in Indian Rupees
+  const defaultCostSettings = { drive: 20, food: 60, energy: 40 };
+  const [costSettings, setCostSettings] = useState(defaultCostSettings);
+  const [showCostSettings, setShowCostSettings] = useState(false);
+
+  // Load saved cost settings from localStorage
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('carboniq_cost_settings');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        setCostSettings({ ...defaultCostSettings, ...parsed });
+      }
+    } catch (e) {
+      // ignore malformed storage
+    }
+  }, []);
+
+  const updateCostSetting = (key, value) => {
+    const next = { ...costSettings, [key]: value };
+    setCostSettings(next);
+    localStorage.setItem('carboniq_cost_settings', JSON.stringify(next));
+  };
+
+  // Get time-based greeting
+  const getTimeBasedGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good morning";
+    if (hour < 17) return "Good afternoon";
+    return "Good evening";
+  };
 
   // Current date for header (e.g. "Friday, Mar 14 · Delhi")
   const getCurrentDateString = () => {
@@ -199,7 +233,7 @@ function Dashboard({ user }) {
       }
     }
     fetchDashboard();
-  }, [user]);
+  }, [user, refreshKey]);
 
   if (loading) {
     return <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: COLORS.muted }}>Loading dashboard...</div>;
@@ -209,7 +243,7 @@ function Dashboard({ user }) {
   if (data && !data.logged_today) {
     return (
       <div style={{ flex: 1, overflowY: "auto", padding: "0 0 80px" }}>
-        <TopBar title="Good morning " subtitle="Current Streak: 🔥" />
+        <TopBar title={`${getTimeBasedGreeting()} `} subtitle="Current Streak: 🔥" />
         <div style={{ padding: "20px 24px", textAlign: "center", marginTop: 40 }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>🌿</div>
           <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.white }}>Ready to log today?</div>
@@ -226,9 +260,39 @@ function Dashboard({ user }) {
   const drivingKm = data ? data.comparison.equivalent_driving_km : 0;
   const breakdown = data ? data.breakdown : { transport: 0, food: 0, energy: 0 };
 
+  function CostInput({ label, value, onChange }) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column" }}>
+        <div style={{ fontSize: 10, color: COLORS.muted, marginBottom: 4 }}>{label}</div>
+        <input
+          type="number"
+          min={0}
+          step={0.01}
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          style={{
+            width: "100%",
+            padding: 10,
+            borderRadius: 10,
+            border: `1px solid ${COLORS.border}`,
+            background: COLORS.bg,
+            color: COLORS.white,
+            fontSize: 12,
+          }}
+        />
+      </div>
+    );
+  }
+
+
+  // Cost savings estimate for reduced driving, food, and energy
+  const moneySaved = Math.round(drivingKm * costSettings.drive);
+  const moneySavedFood = Math.round((breakdown.food || 0) * costSettings.food);
+  const moneySavedEnergy = Math.round((breakdown.energy || 0) * costSettings.energy);
+
   return (
     <div style={{ flex: 1, overflowY: "auto", padding: "0 0 80px" }}>
-      <TopBar title="Good morning " subtitle={getCurrentDateString()} />
+      <TopBar title={`${getTimeBasedGreeting()} `} subtitle={getCurrentDateString()} />
 
       {/* Hero Score */}
       <div style={{ padding: "20px 24px" }}>
@@ -247,6 +311,51 @@ function Dashboard({ user }) {
           <div style={{ fontSize: 56, fontWeight: 900, color: COLORS.accent, letterSpacing: -2, lineHeight: 1 }}>
             {today}
           </div>
+          <div style={{ marginTop: 12, fontSize: 11, color: COLORS.muted, display: "grid", gap: 4 }}>
+            <div>~{drivingKm}km of driving saved (₹{moneySaved} saved)</div>
+            <div>~{breakdown.food}kg food CO₂ (₹{moneySavedFood} saved)</div>
+            <div>~{breakdown.energy}kg energy CO₂ (₹{moneySavedEnergy} saved)</div>
+          </div>
+
+          <div style={{ marginTop: 14, textAlign: "left" }}>
+            <button
+              onClick={() => setShowCostSettings((v) => !v)}
+              style={{
+                border: "none",
+                background: "transparent",
+                color: COLORS.accent,
+                cursor: "pointer",
+                fontSize: 11,
+                fontWeight: 700,
+                padding: 0,
+                textDecoration: "underline",
+              }}
+            >
+              {showCostSettings ? "Hide cost settings" : "Customize cost settings"}
+            </button>
+          </div>
+
+          {showCostSettings ? (
+            <div style={{ marginTop: 12, display: "grid", gap: 10, textAlign: "left" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <CostInput
+                  label="Drive (₹/km)"
+                  value={costSettings.drive}
+                  onChange={(value) => updateCostSetting('drive', value)}
+                />
+                <CostInput
+                  label="Food (₹/kg CO₂)"
+                  value={costSettings.food}
+                  onChange={(value) => updateCostSetting('food', value)}
+                />
+              </div>
+              <CostInput
+                label="Energy (₹/kg CO₂)"
+                value={costSettings.energy}
+                onChange={(value) => updateCostSetting('energy', value)}
+              />
+            </div>
+          ) : null}
           <div style={{ fontSize: 14, color: COLORS.muted, marginTop: 4 }}>kg CO₂</div>
           <div style={{
             marginTop: 16, display: "inline-flex", alignItems: "center", gap: 6,
@@ -303,7 +412,7 @@ function Dashboard({ user }) {
   );
 }
 
-function LogActivity({ user }) {
+function LogActivity({ user, onLogSuccess }) {
   const [transport, setTransport] = useState("car");
   const [distance, setDistance] = useState(15);
   const [meal, setMeal] = useState("chicken");
@@ -313,7 +422,11 @@ function LogActivity({ user }) {
   const [liveResult, setLiveResult] = useState(null);
 
   const calculateEmissions = async () => {
-    if (!user) return;
+    if (!user) {
+      alert("User not authenticated");
+      return;
+    }
+    console.log("User authenticated:", user.uid);
     setLoading(true);
     try {
       const data = await api.logActivity({
@@ -326,12 +439,13 @@ function LogActivity({ user }) {
       if (data.success) {
         setLiveResult(data.total_co2);
         setLogged(true);
+        if (onLogSuccess) onLogSuccess();
       } else {
         alert("Error logging activity: " + (data.error || "Unknown"));
       }
     } catch(err) {
-      console.error(err);
-      alert("Failed to connect to backend");
+      console.error("API Error:", err);
+      alert("Failed to connect to backend: " + err.message);
     }
     setLoading(false);
   };
@@ -537,7 +651,7 @@ function Suggestions({ user }) {
   );
 }
 
-function Progress({ user }) {
+function Progress({ user, refreshKey, setRefreshKey }) {
   const { colors } = useTheme();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -554,7 +668,7 @@ function Progress({ user }) {
       setLoading(false);
     }
     fetchHistory();
-  }, [user]);
+  }, [user, refreshKey]);
 
   if (loading) {
     return <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: COLORS.muted }}>Loading progress...</div>;
@@ -566,15 +680,18 @@ function Progress({ user }) {
   let maxVal = 10;
   let breakdown = { transport: 0, food: 0, energy: 0 };
   let monthlyTotal = 0;
+  let totalCredits = 0;
+  let recentCredits = [];
   
   if (data && data.weekly) {
-    // API returns newest first due to reverse loop, we need oldest first for left-to-right chart
-    const reversedWeekly = [...data.weekly].reverse();
-    weekData = reversedWeekly.map(d => d.total_co2);
-    days = reversedWeekly.map(d => d.day_label[0]); // Just first letter
+    // Backend already returns the weekly data in oldest -> newest order.
+    weekData = data.weekly.map(d => d.total_co2);
+    days = data.weekly.map(d => d.day_label[0]);
     maxVal = Math.max(...weekData) || 10; // Avoid divide by 0
     breakdown = data.monthly.breakdown;
     monthlyTotal = data.monthly.total_co2;
+    totalCredits = data.credits?.total_credits || 0;
+    recentCredits = data.credits?.recent_credits || [];
   }
 
   return (
@@ -587,23 +704,44 @@ function Progress({ user }) {
         <div style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: "18px", marginBottom: 16 }}>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.white }}>Weekly CO₂</div>
-            <div style={{ fontSize: 11, color: COLORS.accent, fontWeight: 600 }}>Active Log</div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <div style={{ fontSize: 11, color: COLORS.accent, fontWeight: 600 }}>Active Log</div>
+              <button
+                onClick={() => setRefreshKey?.(k => k + 1)}
+                style={{
+                  padding: "4px 8px",
+                  background: COLORS.bg,
+                  border: `1px solid ${COLORS.border}`,
+                  borderRadius: 6,
+                  color: COLORS.muted,
+                  fontSize: 10,
+                  cursor: "pointer"
+                }}
+                title="Refresh data"
+              >
+                ↻
+              </button>
+            </div>
           </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "flex-end", height: 90 }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "flex-end", height: 120 }}>
             {weekData.map((val, i) => {
-              const isToday = i === 6;
-              const pct = (val / maxVal) * 100;
+              const isToday = data?.weekly?.[i]?.date === new Date().toISOString().slice(0, 10);
+              const pct = maxVal > 0 ? (val / maxVal) * 100 : 0;
               return (
-                <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+                <div key={i} style={{ flex: 1, height: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
                   <div style={{ fontSize: 9, color: isToday ? COLORS.accent : COLORS.muted, fontWeight: isToday ? 700 : 400 }}>
                     {val}
                   </div>
-                  <div style={{
-                    width: "100%", height: `${pct}%`, minHeight: 8,
-                    borderRadius: "4px 4px 0 0",
-                    background: isToday ? COLORS.accent : val > 7 ? COLORS.red + "99" : COLORS.border,
-                    transition: "height 0.6s ease"
-                  }} />
+                  <div style={{ width: "100%", flex: 1, display: "flex", alignItems: "flex-end" }}>
+                    <div style={{
+                      width: "100%",
+                      height: `${pct}%`,
+                      minHeight: val > 0 ? 8 : 0,
+                      borderRadius: "4px 4px 0 0",
+                      background: isToday ? COLORS.accent : val > 7 ? COLORS.red + "99" : COLORS.border,
+                      transition: "height 0.6s ease"
+                    }} />
+                  </div>
                   <div style={{ fontSize: 10, color: isToday ? COLORS.accent : COLORS.muted }}>{days[i]}</div>
                 </div>
               );
@@ -619,6 +757,27 @@ function Progress({ user }) {
         <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
           <StatCard value={monthlyTotal} label="kg CO₂ this month" color={COLORS.accent} sub="Track your footprint" />
           <StatCard value={`🗓️ ${data ? data.logs.length : 0}`} label="Logs this month" color={COLORS.blue} sub="Keep it up!" />
+        </div>
+
+        {/* Credits earned */}
+        <div style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: "18px", marginBottom: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.white }}>Carbon Credits</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: COLORS.accent }}>{totalCredits} credits</div>
+          </div>
+          <div style={{ fontSize: 11, color: COLORS.muted, marginBottom: 12 }}>Earn 10 credits for every kg of CO₂ saved below city average</div>
+          {recentCredits.length > 0 ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {recentCredits.slice(0, 5).map((credit, i) => (
+                <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "#0A0F0A", borderRadius: 8 }}>
+                  <div style={{ fontSize: 11, color: COLORS.white }}>{new Date(credit.date).toLocaleDateString()}</div>
+                  <div style={{ fontSize: 11, color: COLORS.accent, fontWeight: 600 }}>+{credit.credits_earned} credits</div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ fontSize: 11, color: COLORS.muted, textAlign: "center", padding: "12px" }}>No credits earned yet. Start logging to earn credits!</div>
+          )}
         </div>
 
         {/* Category breakdown */}
@@ -665,12 +824,58 @@ function Progress({ user }) {
 export default function CarbonIQWireframe({ user }) {
   const { colors } = useTheme();
   const [active, setActive] = useState("dashboard");
+  const [isCompanyAdmin, setIsCompanyAdmin] = useState(false);
+  const [initializingHome, setInitializingHome] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function resolveStartScreen() {
+      if (!user) {
+        if (!cancelled) {
+          setActive("dashboard");
+          setInitializingHome(false);
+        }
+        return;
+      }
+
+      try {
+        const userInfo = await api.getDashboard(user.uid);
+        if (!cancelled) {
+          const companyAdmin = userInfo.account_type === "company" && userInfo.role === "admin";
+          setIsCompanyAdmin(companyAdmin);
+          setActive(companyAdmin ? "company-overview" : "dashboard");
+        }
+      } catch (err) {
+        console.error("Failed to resolve start screen:", err);
+        if (!cancelled) {
+          setIsCompanyAdmin(false);
+          setActive("dashboard");
+        }
+      } finally {
+        if (!cancelled) {
+          setInitializingHome(false);
+        }
+      }
+    }
+
+    resolveStartScreen();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   const screenMap = {
-    dashboard: <Dashboard user={user} />,
-    log: <LogActivity user={user} />,
+    dashboard: <Dashboard user={user} refreshKey={refreshKey} />,
+    log: <LogActivity user={user} onLogSuccess={() => setRefreshKey(k => k + 1)} />,
     suggestions: <Suggestions user={user} />,
-    progress: <Progress user={user} />,
+    progress: <Progress user={user} refreshKey={refreshKey} setRefreshKey={setRefreshKey} />,
+    company: <CompanyDashboard user={user} activeTab="overview" onExit={() => setActive("dashboard")} />,
+    "company-overview": <CompanyDashboard user={user} activeTab="overview" onExit={() => setActive("dashboard")} />,
+    "company-employees": <CompanyDashboard user={user} activeTab="employees" onExit={() => setActive("dashboard")} />,
+    "company-logs": <CompanyDashboard user={user} activeTab="logs" onExit={() => setActive("dashboard")} />,
   };
 
   return (
@@ -713,7 +918,13 @@ export default function CarbonIQWireframe({ user }) {
 
         {/* Screen Content */}
         <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-          {screenMap[active]}
+          {initializingHome ? (
+            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: colors.muted }}>
+              Loading workspace...
+            </div>
+          ) : (
+            screenMap[active]
+          )}
         </div>
 
         {/* Bottom Nav */}
@@ -723,10 +934,18 @@ export default function CarbonIQWireframe({ user }) {
           display: "flex", alignItems: "center",
           padding: "0 8px 8px", flexShrink: 0
         }}>
-          {NAV_ITEMS.map(({ id, icon, label }) => {
+          {(
+            isCompanyAdmin && active.startsWith("company-")
+              ? [
+                  { id: "company-overview", icon: "📊", label: "Overview" },
+                  { id: "company-employees", icon: "👥", label: "Employees" },
+                  { id: "company-logs", icon: "📝", label: "Logs" },
+                ]
+              : NAV_ITEMS
+          ).map(({ id, icon, label }) => {
             const isActive = active === id;
             return (
-              <button key={id} onClick={() => setActive(id)} style={{
+              <button key={id} onClick={() => setActive(isCompanyAdmin && id === "company" ? "company-overview" : id)} style={{
                 flex: 1, display: "flex", flexDirection: "column",
                 alignItems: "center", justifyContent: "center", gap: 4,
                 background: "transparent", border: "none", cursor: "pointer",

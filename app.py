@@ -9,6 +9,7 @@ from flask_cors import CORS
 from datetime import datetime, date, timedelta
 import json
 import os
+import sys
 import uuid
 import requests
 from dotenv import load_dotenv
@@ -18,6 +19,12 @@ import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import firestore
 from firebase_admin import auth
+
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 
 load_dotenv()
 CLIMATIQ_API_KEY = os.getenv("CLIMATIQ_API_KEY")
@@ -32,18 +39,19 @@ except Exception as e:
     print(f"❌ Failed to connect to Firebase: {e}")
     db = None
 
-CLIMATIQ_API_KEY = os.getenv("CLIMATIQ_API_KEY")
-
 app = Flask(__name__)
 # Update CORS to allow your Vercel frontend
-CORS(app, origins=[
-    "https://carbon-aqi.vercel.app",  # Your production frontend
-    "https://carboniq.onrender.com",  # Your Render frontend
-    "http://localhost:5173",           # Local Vite dev
-    "http://localhost:5174",           # Local Vite dev (alternative port)
-    "http://localhost:5175",           # Local Vite dev (alternative port)
-    "http://localhost:3000"            # Local React dev
-])  # allow React frontend to call this API
+CORS(app, resources={
+    r"/*": {
+        "origins": [
+            r"https://.*\.vercel\.app",
+            "https://carboniq.onrender.com",
+            "http://localhost:3000",
+            r"http://localhost:517\d",
+            r"http://127\.0\.0\.1:517\d",
+        ]
+    }
+})  # allow React frontend to call this API
 
 # ── Load emission factors ────────────────────────────────────────────────────
 
@@ -52,46 +60,65 @@ with open(os.path.join(BASE_DIR, "emission_factors.json")) as f:
     FACTORS = json.load(f)
 
 # ── Firestore DB (Replaces in-memory DB) ────────────
-# Collection: "users" 
-# Document structure: { "logs": [...], "streak": int, "best_streak": int, "last_log_date": str }
+# Collection: "users"
+# Document structure: { "logs": [...], "streak": int, "best_streak": int, "last_log_date": str, "company_id": str, "role": "employee"|"admin", "account_type": "individual"|"company" }
+# Collection: "companies"
+# Document structure: { "name": str, "admin_id": str, "employees": [user_id], "created_at": timestamp }
 
 def get_user(user_id):
+    default_user = {
+        "logs": [],
+        "streak": 0,
+        "best_streak": 0,
+        "last_log_date": None,
+        "company_id": None,
+        "role": "employee",
+        "account_type": "individual",
+    }
     if not db:
-        return {"logs": [], "streak": 0, "best_streak": 0, "last_log_date": None}
-        
+        return default_user.copy()
+
     try:
-        user_ref = db.collection('users').document(user_id)
-        doc = user_ref.get()
-        
+        doc = db.collection('users').document(user_id).get()
         if doc.exists:
-            return doc.to_dict()
+            user = doc.to_dict()
+            for key, value in default_user.items():
+                user.setdefault(key, value)
+            return user
         else:
-            # Create default user profile
-            new_user = {"logs": [], "streak": 0, "best_streak": 0, "last_log_date": None}
-            user_ref.set(new_user)
+            # Create new user document
+            new_user = default_user.copy()
+            db.collection('users').document(user_id).set(new_user)
             return new_user
     except Exception as e:
-        import traceback
-        print("FIREBASE GET_USER ERROR:", e)
-        traceback.print_exc()
-        return {"logs": [], "streak": 0, "best_streak": 0, "last_log_date": None}
+        print(f"Error getting user {user_id}: {e}")
+        return default_user.copy()
+
+def get_company(company_id):
+    if not db:
+        return None
+
+    try:
+        doc = db.collection('companies').document(company_id).get()
+        return doc.to_dict() if doc.exists else None
+    except Exception as e:
+        print(f"Error getting company {company_id}: {e}")
+        return None
 
 def save_user(user_id, user_data):
-    if not db:
-        return
-    try:
-        db.collection('users').document(user_id).set(user_data)
-    except Exception as e:
-        import traceback
-        print("FIREBASE SAVE_USER ERROR:", e)
-        traceback.print_exc()
+    if db:
+        try:
+            db.collection('users').document(user_id).set(user_data)
+        except Exception as e:
+            print(f"Error saving user {user_id}: {e}")
 
+def save_company(company_id, company_data):
+    if db:
+        try:
+            db.collection('companies').document(company_id).set(company_data)
+        except Exception as e:
+            print(f"Error saving company {company_id}: {e}")
 
-import requests
-from dotenv import load_dotenv
-
-load_dotenv()
-CLIMATIQ_API_KEY = os.getenv("CLIMATIQ_API_KEY")
 
 CLIMATIQ_MAPPINGS = {
     "transport": {
@@ -366,8 +393,8 @@ def require_auth(f):
         
         token = auth_header.split("Bearer ")[1]
         try:
-            # Verify the Firebase ID token
-            decoded_token = auth.verify_id_token(token)
+            # Reject revoked Firebase sessions so forced re-logins take effect immediately.
+            decoded_token = auth.verify_id_token(token, check_revoked=True)
             # Inject the verified user's ID into the kwargs so the route can use it securely
             kwargs["user_id"] = decoded_token["uid"]
         except Exception as e:
@@ -382,6 +409,23 @@ def require_auth(f):
 # ════════════════════════════════════════════════════════════════════════════
 
 # ── POST /api/log ─────────────────────────────────────────────────────────────
+@app.route("/api/profile", methods=["POST"])
+@require_auth
+def update_profile(user_id):
+    """Update persisted user preferences such as account type."""
+    data = request.get_json() or {}
+    account_type = data.get("account_type")
+
+    if account_type not in {"individual", "company"}:
+        return jsonify({"error": "Valid account_type required"}), 400
+
+    user = get_user(user_id)
+    user["account_type"] = account_type
+    save_user(user_id, user)
+
+    return jsonify({"success": True, "account_type": account_type})
+
+
 @app.route("/api/log", methods=["POST"])
 @require_auth
 def log_activity(user_id):
@@ -397,7 +441,10 @@ def log_activity(user_id):
         "energy_kwh": 8
     }
     """
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
+
+    if not data:
+        return jsonify({"error": "Missing JSON request body."}), 400
 
     # Validate required fields
     required = ["transport_mode", "distance_km", "meal_type", "energy_kwh"]
@@ -418,8 +465,14 @@ def log_activity(user_id):
         return jsonify({"error": f"Invalid meal_type. Choose: {list(FACTORS['food'].keys())}"}), 400
 
     # Calculate
-    result   = calculate_co2(transport_mode, distance_km, meal_type, energy_kwh)
-    nudges   = generate_nudges(result["breakdown"], transport_mode, meal_type, distance_km, energy_kwh)
+    result = calculate_co2(transport_mode, distance_km, meal_type, energy_kwh)
+    nudges = generate_nudges(result["breakdown"], transport_mode, meal_type, distance_km, energy_kwh)
+    total_co2 = result["total_co2"]
+
+    # Calculate credits earned (kg CO2 saved vs city average)
+    city_avg = FACTORS["comparisons"]["city_daily_avg_kg"]
+    co2_saved = max(0, city_avg - total_co2)  # Only positive credits
+    credits_earned = round(co2_saved * 10, 0)  # 10 credits per kg CO2 saved
 
     # Save log
     user = get_user(user_id)
@@ -431,21 +484,29 @@ def log_activity(user_id):
         "distance_km":    distance_km,
         "meal_type":      meal_type,
         "energy_kwh":     energy_kwh,
+        "credits_earned": credits_earned,
+        "co2_saved":      co2_saved,
         **result
     }
     user["logs"].append(log_entry)
     update_streak(user)
+
+    # Update user's total credits
+    user["total_credits"] = user.get("total_credits", 0) + credits_earned
     
     save_user(user_id, user)
 
     return jsonify({
-        "success":    True,
-        "log_id":     log_entry["id"],
-        "total_co2":  result["total_co2"],
-        "breakdown":  result["breakdown"],
-        "comparison": result["comparison"],
-        "nudges":     nudges,
-        "streak":     user["streak"]
+        "success":        True,
+        "log_id":         log_entry["id"],
+        "total_co2":      result["total_co2"],
+        "breakdown":      result["breakdown"],
+        "comparison":     result["comparison"],
+        "nudges":         nudges,
+        "streak":         user["streak"],
+        "credits_earned": credits_earned,
+        "co2_saved":      co2_saved,
+        "total_credits":  user["total_credits"]
     }), 201
 
 
@@ -532,7 +593,18 @@ def get_history(user_id, ignored_user_id=None):
                 "energy":    monthly_energy
             }
         },
-        "logs": recent_logs
+        "logs": recent_logs,
+        "credits": {
+            "total_credits": user["total_credits"],
+            "recent_credits": [
+                {
+                    "date": log["date"],
+                    "credits_earned": log.get("credits_earned", 0),
+                    "co2_saved": log.get("co2_saved", 0)
+                }
+                for log in recent_logs if log.get("credits_earned", 0) > 0
+            ]
+        }
     })
 
 
@@ -570,25 +642,36 @@ def get_dashboard(user_id, ignored_user_id=None):
         return jsonify({
             "logged_today": False,
             "streak":       user["streak"],
-            "message":      "No log yet today. Go log your activities!"
+            "message":      "No log yet today. Go log your activities!",
+            "company_id":   user.get("company_id"),
+            "role":         user.get("role", "employee"),
+            "account_type": user.get("account_type", "individual"),
         })
 
-    latest     = today_logs[-1]
+    total_co2 = round(sum(log["total_co2"] for log in today_logs), 2)
+    breakdown = {
+        "transport": round(sum(log["breakdown"]["transport"] for log in today_logs), 2),
+        "food": round(sum(log["breakdown"]["food"] for log in today_logs), 2),
+        "energy": round(sum(log["breakdown"]["energy"] for log in today_logs), 2),
+    }
     city_avg   = FACTORS["comparisons"]["city_daily_avg_kg"]
-    pct_vs_avg = round((1 - latest["total_co2"] / city_avg) * 100, 1)
+    pct_vs_avg = round((1 - total_co2 / city_avg) * 100, 1)
 
     return jsonify({
         "logged_today":   True,
-        "total_co2":      latest["total_co2"],
-        "breakdown":      latest["breakdown"],
+        "total_co2":      total_co2,
+        "breakdown":      breakdown,
         "comparison": {
             "pct_vs_city_avg":       pct_vs_avg,
-            "equivalent_driving_km": round(latest["total_co2"] * 7.6, 1),
+            "equivalent_driving_km": round(total_co2 * 7.6, 1),
             "city_avg_kg":           city_avg
         },
         "streak":         user["streak"],
         "best_streak":    user["best_streak"],
-        "yearly_pace_tonnes": round(latest["total_co2"] * 365 / 1000, 2)
+        "yearly_pace_tonnes": round(total_co2 * 365 / 1000, 2),
+        "company_id":     user.get("company_id"),
+        "role":           user.get("role", "employee"),
+        "account_type":   user.get("account_type", "individual"),
     })
 
 
@@ -602,6 +685,229 @@ def index():
 @app.route("/health", methods=["GET"])
 def health():
     return jsonify({"status": "ok", "service": "CarbonIQ API", "version": "1.0.0"})
+
+
+# ── POST /api/company ──────────────────────────────────────────────────────────
+@app.route("/api/company", methods=["POST"])
+@require_auth
+def create_company(user_id):
+    """Create a new company (admin only)"""
+    data = request.get_json()
+    company_name = data.get('name')
+
+    if not company_name:
+        return jsonify({"error": "Company name required"}), 400
+
+    # Check if user already has a company
+    user = get_user(user_id)
+    if user.get('company_id'):
+        return jsonify({"error": "User already belongs to a company"}), 400
+
+    # Create company
+    company_id = str(uuid.uuid4())
+    company_data = {
+        "name": company_name,
+        "admin_id": user_id,
+        "employees": [],  # Only non-admin employees
+        "created_at": datetime.now()
+    }
+    save_company(company_id, company_data)
+
+    # Update user
+    user['company_id'] = company_id
+    user['role'] = 'admin'
+    save_user(user_id, user)
+
+    return jsonify({"company_id": company_id, "message": "Company created successfully"})
+
+
+# ── POST /api/company/join ────────────────────────────────────────────────────
+@app.route("/api/company/join", methods=["POST"])
+@require_auth
+def join_company(user_id):
+    """Join a company using invite code"""
+    data = request.get_json()
+    company_id = data.get('company_id')
+
+    if not company_id:
+        return jsonify({"error": "Company ID required"}), 400
+
+    # Check if user already has a company
+    user = get_user(user_id)
+    if user.get('company_id'):
+        return jsonify({"error": "User already belongs to a company"}), 400
+
+    # Check if company exists
+    company = get_company(company_id)
+    if not company:
+        return jsonify({"error": "Company not found"}), 404
+
+    # Add user to company
+    company['employees'].append(user_id)
+    save_company(company_id, company)
+
+    # Update user
+    user['company_id'] = company_id
+    user['role'] = 'employee'
+    save_user(user_id, user)
+
+    return jsonify({"message": "Successfully joined company"})
+
+
+# ── GET /api/company/dashboard/<company_id> ───────────────────────────────────
+@app.route("/api/company/dashboard/<company_id>", methods=["GET"])
+@require_auth
+def get_company_dashboard(user_id, company_id):
+    """Get company dashboard data (admin only)"""
+    user = get_user(user_id)
+
+    # Check permissions - only admin can see company dashboard
+    if user.get('company_id') != company_id or user.get('role') != 'admin':
+        return jsonify({"error": "Only company admins can view the full dashboard"}), 403
+
+    company = get_company(company_id)
+    if not company:
+        return jsonify({"error": "Company not found"}), 404
+
+    # Employee metrics should only include users who joined via company_id.
+    employees_data = []
+    total_company_co2 = 0
+    active_employees = 0
+    cutoff = (date.today() - timedelta(days=30)).isoformat()
+    recent_logs = []
+
+    # Add admin data first
+    admin = get_user(company['admin_id'])
+    today_str = date.today().isoformat()
+    admin_today_logs = [l for l in admin["logs"] if l["date"] == today_str]
+    monthly_logs = [l for l in admin["logs"] if l["date"] >= cutoff]
+
+    admin_data = {
+        "user_id": company['admin_id'],
+        "name": "Admin",  # Admin identifier
+        "role": "admin",
+        "logged_today": len(admin_today_logs) > 0,
+        "streak": admin["streak"],
+        "best_streak": admin["best_streak"],
+        "total_logs": len(admin["logs"]),
+        "monthly_co2": round(sum(l["total_co2"] for l in monthly_logs), 2)
+    }
+
+    if admin_today_logs:
+        today_total = round(sum(log["total_co2"] for log in admin_today_logs), 2)
+        admin_data["today_co2"] = today_total
+    else:
+        admin_data["today_co2"] = 0
+
+    for log in admin["logs"]:
+        if log["date"] >= cutoff:
+            recent_logs.append({
+                "user_id": company['admin_id'],
+                "name": "Admin",
+                "role": "admin",
+                "date": log["date"],
+                "total_co2": log["total_co2"],
+                "breakdown": log.get("breakdown", {}),
+            })
+    # Add regular employees
+    for emp_id in company['employees']:
+        emp = get_user(emp_id)
+        today_logs = [l for l in emp["logs"] if l["date"] == today_str]
+        monthly_logs = [l for l in emp["logs"] if l["date"] >= cutoff]
+
+        emp_data = {
+            "user_id": emp_id,
+            "name": f"Employee {emp_id[:8]}",  # Placeholder name
+            "role": emp.get('role', 'employee'),
+            "logged_today": len(today_logs) > 0,
+            "streak": emp["streak"],
+            "best_streak": emp["best_streak"],
+            "total_logs": len(emp["logs"]),
+            "monthly_co2": round(sum(l["total_co2"] for l in monthly_logs), 2)
+        }
+
+        if today_logs:
+            today_total = round(sum(log["total_co2"] for log in today_logs), 2)
+            emp_data["today_co2"] = today_total
+            total_company_co2 += today_total
+            active_employees += 1
+        else:
+            emp_data["today_co2"] = 0
+
+        for log in emp["logs"]:
+            if log["date"] >= cutoff:
+                recent_logs.append({
+                    "user_id": emp_id,
+                    "name": emp_data["name"],
+                    "role": emp_data["role"],
+                    "date": log["date"],
+                    "total_co2": log["total_co2"],
+                    "breakdown": log.get("breakdown", {}),
+                })
+
+        employees_data.append(emp_data)
+
+    # Sort by carbon footprint (lowest first = best)
+    employees_data.sort(key=lambda x: x["today_co2"])
+
+    recent_logs.sort(key=lambda log: (log["date"], log["total_co2"]), reverse=True)
+
+    return jsonify({
+        "company_id": company_id,
+        "company_name": company["name"],
+        "admin": admin_data,
+        "total_employees": len(company["employees"]),
+        "active_today": active_employees,
+        "total_company_co2": round(total_company_co2, 2),
+        "avg_co2_per_employee": round(total_company_co2 / max(active_employees, 1), 2),
+        "total_logs_month": sum(len([l for l in get_user(emp_id)["logs"] if l["date"] >= cutoff]) for emp_id in company['employees']),
+        "employees": employees_data,
+        "leaderboard": employees_data[:5],  # Top 5 lowest emitters
+        "recent_logs": recent_logs[:40],
+    })
+
+
+# ── GET /api/company/employees/<company_id> ───────────────────────────────────
+@app.route("/api/company/employees/<company_id>", methods=["GET"])
+@require_auth
+def get_company_employees(user_id, company_id):
+    """Get company employees list for users in the company."""
+    user = get_user(user_id)
+
+    if user.get('company_id') != company_id:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    company = get_company(company_id)
+    if not company:
+        return jsonify({"error": "Company not found"}), 404
+
+    employees = []
+    for emp_id in company['employees']:
+        emp = get_user(emp_id)
+        employees.append({
+            "user_id": emp_id,
+            "role": emp.get('role', 'employee'),
+            "joined_at": emp.get('last_log_date'),  # Placeholder
+            "total_logs": len(emp.get('logs', [])),
+            "current_streak": emp.get('streak', 0)
+        })
+
+    return jsonify({"employees": employees})
+
+
+# ── GET /api/company/info/<company_id> ─────────────────────────────────────
+@app.route("/api/company/info/<company_id>", methods=["GET"])
+def get_company_info(company_id):
+    """Get basic company info (public endpoint for joining)"""
+    company = get_company(company_id)
+    if not company:
+        return jsonify({"error": "Company not found"}), 404
+
+    return jsonify({
+        "name": company["name"],
+        "employee_count": len(company.get("employees", [])),
+        "created_at": company.get("created_at")
+    })
 
 
 # ── Run ───────────────────────────────────────────────────────────────────────

@@ -21,6 +21,8 @@ function App() {
     return () => unsubscribe()
   }, [])
 
+  const handleAuthSuccess = () => {}
+
   if (loading) {
     return (
       <ThemeProvider>
@@ -34,7 +36,11 @@ function App() {
   return (
     <ThemeProvider>
       {showDesignPreview ? <CarbonLoopWireframePreview /> : null}
-      {!showDesignPreview ? (user ? <CarbonIQWireframe user={user} /> : <AuthScreen />) : null}
+      {!showDesignPreview ? (
+        user ? (
+          <CarbonIQWireframe user={user} />
+        ) : <AuthScreen onAuthSuccess={handleAuthSuccess} />
+      ) : null}
     </ThemeProvider>
   )
 }

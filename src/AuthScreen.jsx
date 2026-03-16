@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { auth } from './firebase';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, getAdditionalUserInfo } from 'firebase/auth';
 import { useTheme } from './ThemeContext.jsx';
+import { api } from './api.js';
 
 const COLORS = {
   bg: "#0F1A0F",
@@ -16,6 +17,7 @@ const COLORS = {
 export default function AuthScreen({ onAuthSuccess }) {
   const { colors } = useTheme();
   const [isLogin, setIsLogin] = useState(true);
+  const [loginType, setLoginType] = useState('individual'); // 'individual' or 'company'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -27,13 +29,26 @@ export default function AuthScreen({ onAuthSuccess }) {
     setError('');
 
     try {
+      let userCredential;
       if (isLogin) {
-        await signInWithEmailAndPassword(auth, email, password);
+        userCredential = await signInWithEmailAndPassword(auth, email, password);
+        // Check account type for existing users
+        const userInfo = await api.getDashboard(userCredential.user.uid);
+        if (userInfo.account_type && userInfo.account_type !== loginType) {
+          await auth.signOut();
+          if (loginType === 'company' && userInfo.account_type === 'individual') {
+            setError("Invalid ID");
+          } else {
+            setError(`This account is registered as ${userInfo.account_type === 'company' ? 'a company account' : 'an individual account'}. Please use the correct login type.`);
+          }
+          setLoading(false);
+          return;
+        }
       } else {
-        await createUserWithEmailAndPassword(auth, email, password);
+        userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await api.updateProfile({ account_type: loginType });
       }
-      // Assuming parent handles onAuthStateChanged naturally, but trigger explicitly just in case
-      onAuthSuccess && onAuthSuccess();
+      onAuthSuccess && onAuthSuccess(loginType);
     } catch (err) {
       console.error(err);
       if (err.code === "auth/invalid-credential") setError("Incorrect email or password.");
@@ -50,8 +65,26 @@ export default function AuthScreen({ onAuthSuccess }) {
 
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-      onAuthSuccess && onAuthSuccess();
+      const userCredential = await signInWithPopup(auth, provider);
+      const additionalUserInfo = getAdditionalUserInfo(userCredential);
+
+      if (additionalUserInfo?.isNewUser) {
+        await api.updateProfile({ account_type: loginType });
+      } else {
+        const userInfo = await api.getDashboard(userCredential.user.uid);
+        if (userInfo.account_type && userInfo.account_type !== loginType) {
+          await auth.signOut();
+          if (loginType === 'company' && userInfo.account_type === 'individual') {
+            setError("Invalid ID");
+          } else {
+            setError(`This account is registered as ${userInfo.account_type === 'company' ? 'a company account' : 'an individual account'}. Please use the correct login type.`);
+          }
+          setLoading(false);
+          return;
+        }
+      }
+
+      onAuthSuccess && onAuthSuccess(loginType);
     } catch (err) {
       console.error(err);
       setError(err.message || "Failed to sign in with Google.");
@@ -76,7 +109,47 @@ export default function AuthScreen({ onAuthSuccess }) {
         <div style={{ textAlign: "center", marginBottom: 40 }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>🌿</div>
           <h1 style={{ fontSize: 28, color: colors.white, margin: 0, fontWeight: 800, letterSpacing: -1 }}>CarbonIQ</h1>
-          <p style={{ color: colors.muted, fontSize: 13, marginTop: 8 }}>Track your footprint. Build your streak.</p>
+          <p style={{ color: colors.muted, fontSize: 13, marginTop: 8 }}>
+            {loginType === 'company' ? 'Create or manage a team workspace.' : 'Track your footprint. Build your streak.'}
+          </p>
+          
+          {/* Login Type Selector */}
+          <div style={{ display: "flex", gap: 8, marginTop: 20, justifyContent: "center" }}>
+            <button
+              type="button"
+              onClick={() => setLoginType('individual')}
+              style={{
+                padding: "8px 16px",
+                borderRadius: 20,
+                border: `1px solid ${loginType === 'individual' ? colors.accent : colors.border}`,
+                background: loginType === 'individual' ? '#1A3A1A' : colors.card,
+                color: loginType === 'individual' ? colors.accent : colors.muted,
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.2s"
+              }}
+            >
+              👤 Individual
+            </button>
+            <button
+              type="button"
+              onClick={() => setLoginType('company')}
+              style={{
+                padding: "8px 16px",
+                borderRadius: 20,
+                border: `1px solid ${loginType === 'company' ? colors.accent : colors.border}`,
+                background: loginType === 'company' ? '#1A3A1A' : colors.card,
+                color: loginType === 'company' ? colors.accent : colors.muted,
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.2s"
+              }}
+            >
+              🏢 Company
+            </button>
+          </div>
         </div>
 
         <form onSubmit={handleAuth} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -129,7 +202,11 @@ export default function AuthScreen({ onAuthSuccess }) {
               opacity: loading ? 0.7 : 1
             }}
           >
-            {loading ? "Authenticating..." : (isLogin ? "Sign In" : "Create Account")}
+            {loading ? "Authenticating..." : (
+              isLogin
+                ? (loginType === 'company' ? "Sign In as Company" : "Sign In")
+                : (loginType === 'company' ? "Create Company Account" : "Create Account")
+            )}
           </button>
 
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 14 }}>
