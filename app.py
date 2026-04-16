@@ -134,18 +134,24 @@ def get_company(company_id):
         return None
 
 def save_user(user_id, user_data):
-    if db:
-        try:
-            db.collection('users').document(user_id).set(user_data)
-        except Exception as e:
-            print(f"Error saving user {user_id}: {e}")
+    if not db:
+        return False
+    try:
+        db.collection('users').document(user_id).set(user_data)
+        return True
+    except Exception as e:
+        print(f"Error saving user {user_id}: {e}")
+        return False
 
 def save_company(company_id, company_data):
-    if db:
-        try:
-            db.collection('companies').document(company_id).set(company_data)
-        except Exception as e:
-            print(f"Error saving company {company_id}: {e}")
+    if not db:
+        return False
+    try:
+        db.collection('companies').document(company_id).set(company_data)
+        return True
+    except Exception as e:
+        print(f"Error saving company {company_id}: {e}")
+        return False
 
 
 CLIMATIQ_MAPPINGS = {
@@ -415,6 +421,9 @@ def update_streak(user):
 def require_auth(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        if not db:
+            return jsonify({"error": "Service unavailable. Firebase is not initialized."}), 503
+
         auth_header = request.headers.get("Authorization")
         if not auth_header or not auth_header.startswith("Bearer "):
             return jsonify({"error": "Unauthorized. Missing or invalid Authorization header."}), 401
@@ -425,9 +434,15 @@ def require_auth(f):
             decoded_token = auth.verify_id_token(token, check_revoked=True)
             # Inject the verified user's ID into the kwargs so the route can use it securely
             kwargs["user_id"] = decoded_token["uid"]
+        except auth.ExpiredIdTokenError:
+            return jsonify({"error": "Unauthorized. Token has expired."}), 401
+        except auth.RevokedIdTokenError:
+            return jsonify({"error": "Unauthorized. Token has been revoked."}), 401
+        except auth.InvalidIdTokenError:
+            return jsonify({"error": "Unauthorized. Token is invalid."}), 401
         except Exception as e:
             print("Token verification failed:", e)
-            return jsonify({"error": "Unauthorized. Invalid token."}), 401
+            return jsonify({"error": "Unauthorized. Token verification failed."}), 401
             
         return f(*args, **kwargs)
     return decorated_function
@@ -449,7 +464,8 @@ def update_profile(user_id):
 
     user = get_user(user_id)
     user["account_type"] = account_type
-    save_user(user_id, user)
+    if not save_user(user_id, user):
+        return jsonify({"error": "Failed to save profile. Please try again later."}), 500
 
     return jsonify({"success": True, "account_type": account_type})
 
@@ -522,7 +538,8 @@ def log_activity(user_id):
     # Update user's total credits
     user["total_credits"] = user.get("total_credits", 0) + credits_earned
     
-    save_user(user_id, user)
+    if not save_user(user_id, user):
+        return jsonify({"error": "Failed to save activity log. Please try again later."}), 500
 
     return jsonify({
         "success":        True,
@@ -623,7 +640,7 @@ def get_history(user_id, ignored_user_id=None):
         },
         "logs": recent_logs,
         "credits": {
-            "total_credits": user["total_credits"],
+            "total_credits": user.get("total_credits", 0),
             "recent_credits": [
                 {
                     "date": log["date"],
@@ -712,7 +729,12 @@ def index():
 # ── GET /health ───────────────────────────────────────────────────────────────
 @app.route("/health", methods=["GET"])
 def health():
-    return jsonify({"status": "ok", "service": "CarbonIQ API", "version": "1.0.0"})
+    return jsonify({
+        "status": "ok",
+        "service": "CarbonIQ API",
+        "version": "1.0.0",
+        "firebase": "connected" if db else "disconnected",
+    })
 
 
 # ── POST /api/company ──────────────────────────────────────────────────────────
@@ -721,8 +743,10 @@ def health():
 def create_company(user_id):
     """Create a new company (admin only)"""
     data = request.get_json()
-    company_name = data.get('name')
+    if not data:
+        return jsonify({"error": "Missing JSON request body."}), 400
 
+    company_name = data.get('name')
     if not company_name:
         return jsonify({"error": "Company name required"}), 400
 
@@ -739,14 +763,16 @@ def create_company(user_id):
         "employees": [],  # Only non-admin employees
         "created_at": datetime.now()
     }
-    save_company(company_id, company_data)
+    if not save_company(company_id, company_data):
+        return jsonify({"error": "Failed to create company. Please try again later."}), 500
 
     # Update user
     user['company_id'] = company_id
     user['role'] = 'admin'
-    save_user(user_id, user)
+    if not save_user(user_id, user):
+        return jsonify({"error": "Company created but failed to update user profile. Please try again later."}), 500
 
-    return jsonify({"company_id": company_id, "message": "Company created successfully"})
+    return jsonify({"company_id": company_id, "message": "Company created successfully"}), 201
 
 
 # ── POST /api/company/join ────────────────────────────────────────────────────
@@ -755,8 +781,10 @@ def create_company(user_id):
 def join_company(user_id):
     """Join a company using invite code"""
     data = request.get_json()
-    company_id = data.get('company_id')
+    if not data:
+        return jsonify({"error": "Missing JSON request body."}), 400
 
+    company_id = data.get('company_id')
     if not company_id:
         return jsonify({"error": "Company ID required"}), 400
 
@@ -772,12 +800,14 @@ def join_company(user_id):
 
     # Add user to company
     company['employees'].append(user_id)
-    save_company(company_id, company)
+    if not save_company(company_id, company):
+        return jsonify({"error": "Failed to join company. Please try again later."}), 500
 
     # Update user
     user['company_id'] = company_id
     user['role'] = 'employee'
-    save_user(user_id, user)
+    if not save_user(user_id, user):
+        return jsonify({"error": "Joined company but failed to update user profile. Please try again later."}), 500
 
     return jsonify({"message": "Successfully joined company"})
 
