@@ -5,10 +5,8 @@ import { signOut } from 'firebase/auth';
 
 const getToken = async () => {
   const user = auth.currentUser;
-  console.log("getToken: currentUser =", user ? { uid: user.uid, email: user.email } : null);
   if (!user) throw new Error('Not authenticated');
   const token = await user.getIdToken();
-  console.log("getToken: got token, length =", token.length);
   return token;
 };
 
@@ -30,8 +28,8 @@ const fetchFromCandidates = async (endpoint, options = {}, { requireAuth = true 
         headers: buildHeaders(options, token),
       });
       return response;
-    } catch (error) {
-      console.warn(`API request failed against ${baseUrl || 'same-origin'}${endpoint}`, error);
+    } catch {
+      // Silently try next candidate
     }
   }
 
@@ -115,11 +113,6 @@ export const api = {
   },
 
   getCompanyInfo: async (companyId) => {
-    const response = await fetchFromCandidates(`/api/company/info/${companyId}`, {}, { requireAuth: false });
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      throw new Error(error.error || 'API request failed');
-    }
-    return response.json();
+    return apiFetch(`/api/company/info/${companyId}`);
   }
 };

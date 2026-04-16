@@ -65,15 +65,25 @@ except Exception as e:
 
 app = Flask(__name__)
 # Update CORS to allow your Vercel frontend
+def _get_allowed_origins():
+    """Build the CORS allow-list from env or sensible defaults."""
+    extra = os.getenv("CORS_ALLOWED_ORIGINS", "").split(",")
+    origins = [o.strip() for o in extra if o.strip()]
+    # Always allow the known production frontend
+    origins.append("https://carboniq.onrender.com")
+    if os.environ.get("FLASK_ENV") != "production":
+        origins.extend([
+            "http://localhost:3000",
+            "http://localhost:5173",
+            "http://localhost:5174",
+            "http://127.0.0.1:5173",
+            "http://127.0.0.1:5174",
+        ])
+    return list(set(origins))
+
 CORS(app, resources={
     r"/*": {
-        "origins": [
-            r"https://.*\.vercel\.app",
-            "https://carboniq.onrender.com",
-            "http://localhost:3000",
-            r"http://localhost:517\d",
-            r"http://127\.0\.0\.1:517\d",
-        ]
+        "origins": _get_allowed_origins()
     }
 })  # allow React frontend to call this API
 
@@ -486,7 +496,19 @@ def log_activity(user_id):
     meal_type      = data["meal_type"]
     energy_kwh     = data["energy_kwh"]
 
-    # Validate values
+    # Validate numeric fields
+    try:
+        distance_km = float(distance_km)
+        energy_kwh = float(energy_kwh)
+    except (TypeError, ValueError):
+        return jsonify({"error": "distance_km and energy_kwh must be numbers."}), 400
+
+    if distance_km < 0 or distance_km > 50000:
+        return jsonify({"error": "distance_km must be between 0 and 50,000."}), 400
+    if energy_kwh < 0 or energy_kwh > 10000:
+        return jsonify({"error": "energy_kwh must be between 0 and 10,000."}), 400
+
+    # Validate enum values
     if transport_mode not in FACTORS["transport"]:
         return jsonify({"error": f"Invalid transport_mode. Choose: {list(FACTORS['transport'].keys())}"}), 400
     if meal_type not in FACTORS["food"]:
@@ -925,8 +947,9 @@ def get_company_employees(user_id, company_id):
 
 # ── GET /api/company/info/<company_id> ─────────────────────────────────────
 @app.route("/api/company/info/<company_id>", methods=["GET"])
-def get_company_info(company_id):
-    """Get basic company info (public endpoint for joining)"""
+@require_auth
+def get_company_info(user_id, company_id):
+    """Get basic company info (authenticated endpoint for joining)"""
     company = get_company(company_id)
     if not company:
         return jsonify({"error": "Company not found"}), 404
