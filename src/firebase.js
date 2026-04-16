@@ -17,10 +17,5 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-console.log("Firebase initialized with config:", {
-  apiKey: firebaseConfig.apiKey ? "present" : "missing",
-  authDomain: firebaseConfig.authDomain,
-  projectId: firebaseConfig.projectId
-});
 
 export { auth, db };
